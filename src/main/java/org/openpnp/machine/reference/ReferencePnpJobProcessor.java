@@ -816,12 +816,35 @@ public class ReferencePnpJobProcessor extends AbstractPnpJobProcessor {
      */
     protected void doSkip() throws Exception {
         if (plannedPlacements.size() > 0) {
-            PlannedPlacement plannedPlacement = plannedPlacements.remove(0);
-            JobPlacement jobPlacement = plannedPlacement.jobPlacement;
-            Nozzle nozzle = plannedPlacement.nozzle;
-            discard(nozzle);
-            jobPlacement.status = Status.Skipped;
-            Logger.debug("Skipped {}", jobPlacement.placement);
+
+            // iterate through planned placement in this cycle (number of planned placements ==
+            // number of nozzles)
+            for (PlannedPlacement plannedPlacement : plannedPlacements) {
+                JobPlacement jobPlacement = plannedPlacement.jobPlacement;
+
+                if (plannedPlacement.stepComplete) {
+                    // go over placements having the current step already completed
+                    continue;
+                }
+
+                // remove the placement to be skipped from list
+                plannedPlacements.remove(plannedPlacements.indexOf(plannedPlacement));
+
+                // discard
+                Nozzle nozzle = plannedPlacement.nozzle;
+                discard(nozzle);
+
+                jobPlacement.status = Status.Skipped;
+                Logger.debug("Skipped {}", jobPlacement.placement);
+
+                /*
+                 * stop iterating through plannedPlacements to prevent the
+                 * ConcurrentModificationException (list is modified within iteration)
+                 * https://docs.oracle.com/javase/7/docs/api/java/util/
+                 * ConcurrentModificationException.html
+                 */
+                break;
+            }
         }
     }
     
